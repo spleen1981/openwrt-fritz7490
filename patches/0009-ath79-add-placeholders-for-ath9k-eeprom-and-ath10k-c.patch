@@ -1,0 +1,23 @@
+From a1a6776a4ee26e696224282f8d1d50bbcbe4114f Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:36:04 +0100
+Subject: [PATCH 09/14] ath79: add placeholders for ath9k eeprom and ath10k
+ caldata
+
+Quick and dirty add both files to the ath79 WASP image
+---
+ .../base-files/lib/firmware/ath10k/cal-pci-0000:00:00.0.bin       | 0
+ .../base-files/lib/firmware/ath9k-eeprom-ahb-18100000.wmac.bin    | 0
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 target/linux/ath79/generic/base-files/lib/firmware/ath10k/cal-pci-0000:00:00.0.bin
+ create mode 100644 target/linux/ath79/generic/base-files/lib/firmware/ath9k-eeprom-ahb-18100000.wmac.bin
+
+diff --git a/target/linux/ath79/generic/base-files/lib/firmware/ath10k/cal-pci-0000:00:00.0.bin b/target/linux/ath79/generic/base-files/lib/firmware/ath10k/cal-pci-0000:00:00.0.bin
+new file mode 100644
+index 0000000000..e69de29bb2
+diff --git a/target/linux/ath79/generic/base-files/lib/firmware/ath9k-eeprom-ahb-18100000.wmac.bin b/target/linux/ath79/generic/base-files/lib/firmware/ath9k-eeprom-ahb-18100000.wmac.bin
+new file mode 100644
+index 0000000000..e69de29bb2
+-- 
+2.43.0
+

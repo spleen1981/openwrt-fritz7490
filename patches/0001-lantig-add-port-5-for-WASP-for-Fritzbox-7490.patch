@@ -1,0 +1,79 @@
+From 36e0259b3b44f1b55ad022eb06fad3f5be27e1cc Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:01:38 +0100
+Subject: [PATCH 01/14] lantig: add port 5 for WASP for Fritzbox 7490
+
+---
+ .../mips/boot/dts/lantiq/vr9_avm_fritz7490.dtsi     |  8 ++++++++
+ .../mips/boot/dts/lantiq/vr9_avm_fritzxx90.dtsi     | 13 +++++++++++++
+ .../lantiq/xrx200/base-files/etc/board.d/02_network |  6 ++++--
+ 3 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritz7490.dtsi b/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritz7490.dtsi
+index 0c682dba3a..dd4cc1edac 100644
+--- a/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritz7490.dtsi
++++ b/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritz7490.dtsi
+@@ -7,6 +7,14 @@
+ / {
+ 	compatible = "avm,fritz7490", "lantiq,xway", "lantiq,vr9";
+ 	model = "AVM FRITZ!Box 7490";
++
++	remoteproc-wasp {
++		compatible = "avm,fritzbox7490-wasp";
++		mdio-device = <&gswip_mdio>;
++		link-interface = <&port5>;
++		reset-gpios = <&gpio 34 GPIO_ACTIVE_HIGH>;
++		power-gpios = <&gpio 5 GPIO_ACTIVE_HIGH>;
++	};
+ };
+ 
+ &aliases {
+diff --git a/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritzxx90.dtsi b/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritzxx90.dtsi
+index 0a2027fb74..01394e095d 100644
+--- a/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritzxx90.dtsi
++++ b/target/linux/lantiq/files/arch/mips/boot/dts/lantiq/vr9_avm_fritzxx90.dtsi
+@@ -70,6 +70,19 @@
+ 	lantiq,gphy-mode = <GPHY_MODE_GE>;
+ };
+ 
++&gswip_ports {
++	port5: port@5 {
++		reg = <5>;
++		label = "lan-wasp";
++		phy-mode = "rgmii";
++
++		fixed-link {
++			speed = <1000>;
++			full-duplex;
++		};
++	};
++};
++
+ &gpio {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&state_default>;
+diff --git a/target/linux/lantiq/xrx200/base-files/etc/board.d/02_network b/target/linux/lantiq/xrx200/base-files/etc/board.d/02_network
+index d6377140b3..6f99ae37eb 100644
+--- a/target/linux/lantiq/xrx200/base-files/etc/board.d/02_network
++++ b/target/linux/lantiq/xrx200/base-files/etc/board.d/02_network
+@@ -37,13 +37,15 @@ lantiq_setup_interfaces()
+ 	avm,fritz7360-v2|\
+ 	avm,fritz7362sl|\
+ 	avm,fritz7430|\
+-	avm,fritz7490|\
+-	avm,fritz7490-micron|\
+ 	buffalo,wbmr-300hpd|\
+ 	tplink,vr200|\
+ 	tplink,vr200v)
+ 		ucidef_set_interface_lan "lan1 lan2 lan3 lan4"
+ 		;;
++	avm,fritz7490|\
++	avm,fritz7490-micron)
++                ucidef_set_interface_lan "lan1 lan2 lan3 lan4 lan-wasp"
++		;;
+ 	avm,fritz7412)
+ 		ucidef_set_interface_lan "lan"
+ 		;;
+-- 
+2.43.0
+

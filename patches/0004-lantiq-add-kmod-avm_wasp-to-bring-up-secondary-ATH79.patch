@@ -1,0 +1,36 @@
+From faf0cd3b4442009d8ef4f41e89e4d5a02f9167d4 Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:23:19 +0100
+Subject: [PATCH 04/14] lantiq: add kmod avm_wasp to bring up secondary ATH79
+ SoC (WASP)
+
+add kmod-avm-wasp package
+---
+ target/linux/lantiq/image/vr9.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/target/linux/lantiq/image/vr9.mk b/target/linux/lantiq/image/vr9.mk
+index a86b220369..e6c1c1dcbe 100644
+--- a/target/linux/lantiq/image/vr9.mk
++++ b/target/linux/lantiq/image/vr9.mk
+@@ -286,7 +286,7 @@ define Device/avm_fritz7490
+   DEVICE_VARIANT := Other NAND
+   KERNEL_SIZE := 4096k
+   IMAGE_SIZE := 49152k
+-  DEVICE_PACKAGES := kmod-usb-xhci-pci-renesas fritz-tffs \
++  DEVICE_PACKAGES := kmod-usb-xhci-pci-renesas fritz-tffs kmod-avm-wasp \
+ 	xrx200-rev1.1-phy11g-firmware xrx200-rev1.2-phy11g-firmware -kmod-owl-loader
+ endef
+ TARGET_DEVICES += avm_fritz7490
+@@ -299,7 +299,7 @@ define Device/avm_fritz7490-micron
+   DEVICE_VARIANT := Micron NAND
+   KERNEL_SIZE := 4096k
+   IMAGE_SIZE := 49152k
+-  DEVICE_PACKAGES := kmod-usb-xhci-pci-renesas fritz-tffs \
++  DEVICE_PACKAGES := kmod-usb-xhci-pci-renesas fritz-tffs kmod-avm-wasp \
+ 	xrx200-rev1.1-phy11g-firmware xrx200-rev1.2-phy11g-firmware -kmod-owl-loader
+ endef
+ TARGET_DEVICES += avm_fritz7490-micron
+-- 
+2.43.0
+

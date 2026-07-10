@@ -1,0 +1,42 @@
+
+config system
+	option hostname 'OpenWrt-FritzBox-7490'
+	option timezone 'CET-1CEST,M3.5.0,M10.5.0/3'
+	option ttylogin '0'
+	option log_size '128'
+	option urandom_seed '0'
+	option compat_version '1.1'
+	option zonename 'Europe/Berlin'
+	option log_proto 'udp'
+	option conloglevel '8'
+	option cronloglevel '7'
+
+config timeserver 'ntp'
+	list server '0.openwrt.pool.ntp.org'
+	list server '1.openwrt.pool.ntp.org'
+	list server '2.openwrt.pool.ntp.org'
+	list server '3.openwrt.pool.ntp.org'
+
+config led 'led_wifi'
+	option name 'wifi'
+	option sysfs 'green:wlan'
+	option trigger 'phy0tpt'
+
+config led 'led_dsl'
+	option name 'dsl'
+	option sysfs 'green:info'
+	option default '0'
+
+config led 'led_internet'
+	option name 'internet'
+	option sysfs 'green:internet'
+	option trigger 'netdev'
+	option mode 'link tx rx'
+	option dev 'pppoe-wan'
+
+config led 'led_lan'
+	option name 'LAN'
+	option sysfs 'green:lan'
+	option trigger 'switch0'
+	option port_mask '0x17'
+

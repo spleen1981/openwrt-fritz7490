@@ -1,0 +1,157 @@
+From 55119ad6fea1c71faf59688097115c42cfd0a4ea Mon Sep 17 00:00:00 2001
+From: Daniel Kestrel <kestrel1974@t-online.de>
+Date: Mon, 14 Feb 2022 21:13:54 +0100
+Subject: [PATCH 05/14] ath79: add support for AVM Fritzbox 3490, 5490 and 7490
+ WASP SoC
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This adds support for the Fritzbox 3490, 5490 and 7490 WASP SoC
+(Wireless Assistant Support Processor, sometimes referred to as
+Scorpion).
+This is a memory only target on the mentioned Lantiq devices, that
+has no access to leds, NAND, GPIO, USB3 on the Lantiq host.
+The two wifi adapters with 2.4GHz and 5 GHz are connected to this
+SoC and they are not accessible from the Lantiq host. The ethernet
+port is connected to the switch on the Lantiq host and allows
+network communication. The Lantiq can load a network boot loader
+to this SoC using gpio.
+The WASP SoC runs fully from RAM and is booted by using a remoteproc
+kernel module and runs its own OpenWrt instance.
+
+Specifications:
+ - SoC: QCA9558 on Lantiq host
+ - RAM: 128 MB
+ - Wireless:
+   · Qualcomm-QCA9558 w/ 3×3 MIMO for 2.4GHz 802.11b/g/n
+   · Qualcomm-QCA9880 w/ 3×3 MIMO for 5GHz 802.11a/ac
+ - AG71xx ethernet
+
+Installation:
+For booting WASP, build the ATH79 target x7490 WASP image, copy it
+to /lib/firmware on the Lantiq host image and use the network boot
+firmware from the AVM firmware together with the avm_wasp kernel
+module.
+
+Signed-off-by: Daniel Kestrel <kestrel1974@t-online.de>
+---
+ .../ath79/dts/qca9558_avm_fritzx490-wasp.dts  | 52 +++++++++++++++++++
+ target/linux/ath79/image/generic.mk           | 35 +++++++++++++
+ 2 files changed, 87 insertions(+)
+ create mode 100644 target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
+
+diff --git a/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts b/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
+new file mode 100644
+index 0000000000..63b7d10963
+--- /dev/null
++++ b/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
+@@ -0,0 +1,52 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
++/dts-v1/;
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
++#include "qca955x.dtsi"
++
++/ {
++	compatible = "avm,fritzx490-wasp", "qca,qca9558";
++	model = "AVM FRITZ!Box x490 WASP (Wireless Assist)";
++
++	chosen {
++		bootargs = "console=ttyS0,115200n8";
++	};
++};
++
++&uart {
++	status = "okay";
++};
++
++&pcie0 {
++	status = "okay";
++
++	wifi@0,0 {
++		compatible = "qcom,ath10k";
++		reg = <0 0 0 0 0>;
++		qca,no-eeprom;
++	};
++};
++
++&eth0 {
++	status = "okay";
++
++	phy-mode = "rgmii";
++
++	pll-data = <0xa6000000 0x00000101 0x00001616>;
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++	};
++};
++
++&wmac {
++	status = "okay";
++
++	qca,no-eeprom;
++};
++
++&gpio {
++	status = "okay";
++};
+diff --git a/target/linux/ath79/image/generic.mk b/target/linux/ath79/image/generic.mk
+index c5eb5895e6..0eae6284d1 100644
+--- a/target/linux/ath79/image/generic.mk
++++ b/target/linux/ath79/image/generic.mk
+@@ -26,6 +26,27 @@ define Build/append-md5sum-bin
+ 		xargs echo -ne >> $@
+ endef
+ 
++define Build/avm-wasp-checksum
++       $(STAGING_DIR_HOST)/bin/avm-wasp-checksum \
++               -i "$@" -o "$@.new" -m $(word 1,$(1))
++       mv "$@.new" "$@"
++endef
++
++define Build/avm-wasp-loader-compile
++       rm -rf $@.src
++       $(MAKE) -C lzma-loader \
++               PKG_BUILD_DIR="$@.src" \
++               TARGET_DIR="$(dir $@)" LOADER_NAME="$(notdir $@)" \
++               LZMA_TEXT_START=0x81a00000 LOADADDR=0x80020000 \
++               $(1) compile loader.$(LOADER_TYPE)
++       mv "$@.$(LOADER_TYPE)" "$@"
++       rm -rf $@.src
++endef
++
++define Build/avm-wasp-loader
++       $(call Build/avm-wasp-loader-compile,LOADER_DATA="$@")
++endef
++
+ define Build/cybertan-trx
+ 	@echo -n '' > $@-empty.bin
+ 	-$(STAGING_DIR_HOST)/bin/trx -o $@.new \
+@@ -609,6 +630,20 @@ define Device/avm_fritzdvbc
+ endef
+ TARGET_DEVICES += avm_fritzdvbc
+ 
++define Device/avm_fritzx490-wasp
++  SOC := qca9558
++  DEVICE_VENDOR := AVM
++  DEVICE_MODEL := FRITZ!Box 3490/5490/7490 WASP (Wireless Assist)
++  KERNEL := kernel-bin | append-dtb | relocate-kernel | lzma-no-dict | \
++      avm-wasp-loader | pad-to 4096 | pad-extra 208 | avm-wasp-checksum x490
++  LOADER_TYPE := bin
++  KERNEL_INITRAMFS := $$(KERNEL)
++  DEVICE_PACKAGES := kmod-ath10k-ct ath10k-firmware-qca988x-ct \
++	-uboot-envtools -swconfig -ppp -kmod-ppp -dnsmasq
++  IMAGE_SIZE := 11000k
++endef
++TARGET_DEVICES += avm_fritzx490-wasp
++
+ define Device/belkin_f9x-v2
+   $(Device/loader-okli-uimage)
+   SOC := qca9558
+-- 
+2.43.0
+

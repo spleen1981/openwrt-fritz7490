@@ -1,0 +1,24 @@
+From 5d9aa0b7ff6e472bcdb1757eb05bf95749bdb07f Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:27:26 +0100
+Subject: [PATCH 06/14] config: fix wasp boot
+
+---
+ config/Config-images.in | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/config/Config-images.in b/config/Config-images.in
+index fcc5fa52cb..e23e1ab77f 100644
+--- a/config/Config-images.in
++++ b/config/Config-images.in
+@@ -20,6 +20,7 @@ menu "Target Images"
+ 			default TARGET_INITRAMFS_COMPRESSION_ZSTD if TARGET_qualcommax
+ 			default TARGET_INITRAMFS_COMPRESSION_ZSTD if TARGET_microchipsw
+ 			default TARGET_INITRAMFS_COMPRESSION_XZ if USES_SEPARATE_INITRAMFS
++			default TARGET_INITRAMFS_COMPRESSION_XZ if TARGET_ath79_generic_DEVICE_avm_fritzx490-wasp
+ 			default TARGET_INITRAMFS_COMPRESSION_NONE
+ 			depends on TARGET_ROOTFS_INITRAMFS
+ 			help
+-- 
+2.43.0
+

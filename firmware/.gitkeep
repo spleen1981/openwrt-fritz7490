@@ -1,0 +1,2 @@
+# This file ensures the firmware directory is tracked by git
+# Actual firmware files are excluded via .gitignore

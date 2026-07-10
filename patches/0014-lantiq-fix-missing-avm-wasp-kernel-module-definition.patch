@@ -1,0 +1,48 @@
+From fed1f8204f2367f936e6378e117b0ead4881e481 Mon Sep 17 00:00:00 2001
+From: Claude Assistant <claude@anthropic.com>
+Date: Mon, 8 Jun 2026 08:54:15 +0000
+Subject: [PATCH 14/14] lantiq: fix missing avm-wasp kernel module definition
+
+The avm-wasp kernel module definition was accidentally removed during
+conflict resolution. This adds it back after the 6lowpan module.
+---
+ package/kernel/linux/modules/other.mk | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/package/kernel/linux/modules/other.mk b/package/kernel/linux/modules/other.mk
+index 1b9a287253..f3367a92a6 100644
+--- a/package/kernel/linux/modules/other.mk
++++ b/package/kernel/linux/modules/other.mk
+@@ -27,6 +27,29 @@ endef
+ $(eval $(call KernelPackage,6lowpan))
+ 
+ 
++define KernelPackage/avm-wasp
++  SUBMENU:=$(OTHER_MENU)
++  TITLE:=AVM WASP remote Processor Support
++  DEPENDS:=@TARGET_lantiq_xrx200
++  KCONFIG:= \
++	CONFIG_REMOTEPROC=y \
++	CONFIG_REMOTEPROC_CDEV=y \
++	CONFIG_VIRTIO_BLK=n \
++	CONFIG_VIRTIO_NET=n \
++	CONFIG_INGENIC_VPU_RPROC=n \
++	CONFIG_AVM_WASP_REMOTEPROC
++  FILES:=$(LINUX_DIR)/drivers/remoteproc/avm_wasp.ko
++  AUTOLOAD:=$(call AutoLoad,50,avm-wasp)
++endef
++
++define KernelPackage/avm-wasp/description
++  Support for booting the AVM WASP secondary processor of some AVM fritzbox
++  devices.
++endef
++
++$(eval $(call KernelPackage,avm-wasp))
++
++
+ define KernelPackage/dma-buf
+   SUBMENU:=$(OTHER_MENU)
+   TITLE:=DMA shared buffer support
+-- 
+2.43.0
+

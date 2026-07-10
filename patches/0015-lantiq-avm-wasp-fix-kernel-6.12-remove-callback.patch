@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Claude Assistant <claude@anthropic.com>
+Date: Sun, 8 Jun 2026 17:15:00 +0000
+Subject: [PATCH 15/15] lantiq: avm-wasp: fix kernel 6.12 remove callback
+ signature
+
+Kernel 6.12 changed the platform_driver .remove callback from
+returning int to returning void. Update the avm_wasp driver to
+match the new signature.
+
+Upstream kernel commit that changed this:
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=5c5a7680e67ba6fbbb5f4d79fa41485450c1985c
+
+Signed-off-by: Claude Assistant <claude@anthropic.com>
+---
+ ...remotproc-add-avm_wasp-driver-kernel-module.patch | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch b/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
+index 1608ef1284..3c0ea8a615 100644
+--- a/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
++++ b/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
+@@ -1075,15 +1075,16 @@ index 000000000000..6c8fe3c7a57d
+ +	return ret;
+ +}
+ +
+-+static int avm_wasp_rproc_remove(struct platform_device *pdev)
+++static void avm_wasp_rproc_remove(struct platform_device *pdev)
+ +{
+ +	struct rproc *rproc = platform_get_drvdata(pdev);
+ +	struct avm_wasp_rproc *avmwasp = rproc->priv;
+ +
+ +	gpiod_set_value(avmwasp->power_gpio, 0);
+-+
+-+	return 0;
+ +}
+ +
+++/* Note: In kernel 6.12+, .remove returns void instead of int.
+++ * This is handled by the above signature change. */
+++
+ +static const u32 model_3390 = MODEL_3390;
+ +static const u32 model_x490 = MODEL_X490;
+ +
+--
+2.43.0

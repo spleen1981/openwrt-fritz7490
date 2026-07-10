@@ -1,0 +1,17 @@
+From b2a57030c29edd53db7fe451744b73d82b021bff Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:36:59 +0100
+Subject: [PATCH 10/14] lantiq: add placeholder for the renesas usb fw
+
+Quick and dirty add usb fw file to the xrx200 image
+---
+ .../lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem      | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 target/linux/lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem
+
+diff --git a/target/linux/lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem b/target/linux/lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem
+new file mode 100644
+index 0000000000..e69de29bb2
+-- 
+2.43.0
+

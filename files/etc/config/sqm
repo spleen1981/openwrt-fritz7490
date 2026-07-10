@@ -1,0 +1,13 @@
+config queue 'eth0'
+	option enabled '0'
+	option interface 'pppoe-wan'
+	option download '48000'
+	option upload '20000'
+	option qdisc 'cake'
+	option script 'piece_of_cake.qos'
+	option linklayer 'ethernet'
+	option use_mq '0'
+	option debug_logging '1'
+	option verbosity '5'
+	option overhead '40'
+

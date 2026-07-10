@@ -1,0 +1,26 @@
+From 2f1a8f938aefb620a113db09286c5f31068b4a9a Mon Sep 17 00:00:00 2001
+From: Timo Dorfner <timo@timodo.de>
+Date: Thu, 14 Mar 2024 18:40:21 +0100
+Subject: [PATCH 07/14] fritzx490-wasp: fix compile
+
+While I have no idea if this is the right way to fix this, it at least hasn't caused issues as far as I can tell.
+---
+ target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts b/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
+index 63b7d10963..491f57d312 100644
+--- a/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
++++ b/target/linux/ath79/dts/qca9558_avm_fritzx490-wasp.dts
+@@ -15,7 +15,7 @@
+ 	};
+ };
+ 
+-&uart {
++&uart0 {
+ 	status = "okay";
+ };
+ 
+-- 
+2.43.0
+

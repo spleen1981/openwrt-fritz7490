@@ -1,0 +1,10 @@
+files/etc/nebula/
+
+# Proprietary firmware files - must be obtained legally by users
+firmware/*.bin
+firmware/*.fw
+firmware/*.mem
+
+# Keep the directory structure
+!firmware/.gitkeep
+!.secrets/.gitkeep

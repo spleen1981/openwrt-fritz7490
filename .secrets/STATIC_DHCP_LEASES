@@ -1,0 +1,5 @@
+
+config host
+	option name 'MyHostname'
+	option ip '192.168.1.220'
+	list mac 'aa:bb:cc:dd:ee:ff'

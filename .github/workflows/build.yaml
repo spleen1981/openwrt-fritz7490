@@ -1,0 +1,460 @@
+name: Build OpenWrt Fritz!Box 7490
+on:
+  #push:
+  #  branches: [main]
+  workflow_dispatch:
+    inputs:
+      openwrt_version:
+        description: 'OpenWrt version to build'
+        required: false
+        default: '25.12.4'
+        type: choice
+        options:
+          - '24.10'
+          - '25.12.4'
+      clean_build:
+        description: 'Clean build (ignore cache)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      update_sources:
+        description: 'Update sources (feeds update)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      build_target:
+        description: 'What to build'
+        required: false
+        default: 'lantiq-only'
+        type: choice
+        options:
+          - 'both'
+          - 'lantiq-only'
+          - 'wasp-only'
+          - 'lantiq-initial'
+
+jobs:
+  build-wasp:
+    runs-on: ubuntu-24.04
+    if: (inputs.build_target || 'lantiq-only') != 'lantiq-only' && (inputs.build_target || 'lantiq-only') != 'lantiq-initial'
+    outputs:
+      wasp-cache-key: ${{ steps.wasp-cache-key.outputs.key }}
+    steps:
+      - name: Checkout my repo
+        uses: actions/checkout@v4
+
+      - name: Set config file names
+        id: config-files
+        run: |
+          VERSION="${{ inputs.openwrt_version || '24.10' }}"
+          echo "wasp_config=.config-wasp-${VERSION}" >> $GITHUB_OUTPUT
+          echo "lantiq_config=.config-lantiq-${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Generate config hashes
+        id: config-hash
+        run: |
+          WASP_FILE=".config-wasp-${{ inputs.openwrt_version || '24.10' }}"
+          LANTIQ_FILE=".config-lantiq-${{ inputs.openwrt_version || '24.10' }}"
+          echo "wasp_hash=$(sha256sum ${WASP_FILE} | cut -c1-16)" >> $GITHUB_OUTPUT
+          echo "lantiq_hash=$(sha256sum ${LANTIQ_FILE} | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      - name: Generate WASP cache key
+        id: wasp-cache-key
+        run: |
+          BASE_KEY="wasp-image-${{ inputs.openwrt_version || '24.10' }}-${{ steps.config-hash.outputs.wasp_hash }}"
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            echo "key=${BASE_KEY}-clean-${{ github.run_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "key=${BASE_KEY}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check WASP image cache
+        id: wasp-image-cache
+        uses: actions/cache@v4
+        with:
+          path: wasp-bin
+          key: ${{ steps.wasp-cache-key.outputs.key }}
+          # Bei clean_build greift kein restore-key, da der Key einzigartig ist
+          restore-keys: |
+            wasp-image-${{ inputs.openwrt_version || '24.10' }}-${{ steps.config-hash.outputs.wasp_hash }}
+
+      - name: Install dependencies
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib \
+            gettext git libncurses5-dev libssl-dev python3-setuptools \
+            rsync unzip zlib1g-dev file wget curl 7zip
+
+      - name: Set OpenWrt branch/tag
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        id: openwrt-ref
+        run: |
+          if [ "${{ inputs.openwrt_version }}" = "25.12.4" ]; then
+            echo "ref=v25.12.4" >> $GITHUB_OUTPUT
+            echo "use_patches=true" >> $GITHUB_OUTPUT
+            echo "repo=https://github.com/openwrt/openwrt.git" >> $GITHUB_OUTPUT
+          else
+            echo "ref=openwrt-24.10-fritz.box.7490" >> $GITHUB_OUTPUT
+            echo "use_patches=false" >> $GITHUB_OUTPUT
+            echo "repo=https://github.com/Zappception/openwrt.git" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Clone OpenWrt
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: |
+          git clone -b ${{ steps.openwrt-ref.outputs.ref }} \
+            ${{ steps.openwrt-ref.outputs.repo }} openwrt
+
+      - name: Configure Git
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply patches for 25.12.4
+        if: (steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true') && steps.openwrt-ref.outputs.use_patches == 'true'
+        working-directory: openwrt
+        run: |
+          git am ../patches/0001-lantig-add-port-5-for-WASP-for-Fritzbox-7490.patch
+          git am ../patches/0002-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0003-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0004-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0005-ath79-add-support-for-AVM-Fritzbox-3490-5490-and-749.patch
+          git am ../patches/0006-config-fix-wasp-boot.patch
+          git am ../patches/0007-fritzx490-wasp-fix-compile.patch
+          git am ../patches/0008-lantiq-add-support-for-AVM-Fritzbox-7490-ath9k-eepro.patch
+          git am ../patches/0009-ath79-add-placeholders-for-ath9k-eeprom-and-ath10k-c.patch
+          git am ../patches/0010-lantiq-add-placeholder-for-the-renesas-usb-fw.patch
+          git am ../patches/0011-lantiq-add-placeholder-for-the-WASP-fw.patch
+          git am ../patches/0014-lantiq-fix-missing-avm-wasp-kernel-module-definition.patch
+          git am ../patches/0015-lantiq-avm-wasp-fix-kernel-6.12-remove-callback.patch
+          echo "All patches applied successfully"
+
+      - name: Update feeds
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        working-directory: openwrt
+        run: |
+          if [ "${{ inputs.update_sources }}" = "true" ]; then
+            ./scripts/feeds update -a
+          else
+            ./scripts/feeds update -a -n
+          fi
+          ./scripts/feeds install -a
+
+      - name: Cache downloads
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        uses: actions/cache@v4
+        with:
+          path: openwrt/dl
+          key: wasp-${{ inputs.openwrt_version || '24.10' }}-dl-${{ inputs.update_sources == 'true' && github.sha || steps.config-hash.outputs.wasp_hash }}
+          restore-keys: wasp-${{ inputs.openwrt_version || '24.10' }}-dl-
+
+      - name: Cache build_dir
+        if: (steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true') && inputs.clean_build != 'true'
+        uses: actions/cache@v4
+        with:
+          path: openwrt/build_dir
+          key: wasp-${{ inputs.openwrt_version || '24.10' }}-build-${{ steps.config-hash.outputs.wasp_hash }}-${{ github.sha }}
+          restore-keys: |
+            wasp-${{ inputs.openwrt_version || '24.10' }}-build-${{ steps.config-hash.outputs.wasp_hash }}-
+            wasp-${{ inputs.openwrt_version || '24.10' }}-build-
+
+      - name: Cache staging_dir
+        if: (steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true') && inputs.clean_build != 'true'
+        uses: actions/cache@v4
+        with:
+          path: openwrt/staging_dir
+          key: wasp-${{ inputs.openwrt_version || '24.10' }}-staging-${{ steps.config-hash.outputs.wasp_hash }}-${{ github.sha }}
+          restore-keys: |
+            wasp-${{ inputs.openwrt_version || '24.10' }}-staging-${{ steps.config-hash.outputs.wasp_hash }}-
+            wasp-${{ inputs.openwrt_version || '24.10' }}-staging-
+
+      - name: Copy WASP firmware files
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: |
+          mkdir -p openwrt/target/linux/ath79/generic/base-files/lib/firmware/ath10k
+          cp firmware/ath9k-eeprom-ahb-18100000.wmac.bin \
+             openwrt/target/linux/ath79/generic/base-files/lib/firmware/
+          cp firmware/cal-pci-0000:00:00.0.bin \
+             openwrt/target/linux/ath79/generic/base-files/lib/firmware/ath10k/
+
+      - name: Copy WASP config
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: cp ${{ steps.config-files.outputs.wasp_config }} openwrt/.config
+
+      - name: Build WASP image
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        working-directory: openwrt
+        run: |
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            make -j$(nproc) defconfig download clean world
+          else
+            make -j$(nproc) defconfig download world
+          fi
+
+      - name: Save WASP image to cache dir
+        if: steps.wasp-image-cache.outputs.cache-hit != 'true' || inputs.clean_build == 'true'
+        run: |
+          mkdir -p wasp-bin
+          cp openwrt/bin/targets/ath79/generic/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin \
+             wasp-bin/
+
+      - name: Copy WASP image to workspace
+        run: |
+          mkdir -p wasp-artifacts
+          cp wasp-bin/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin wasp-artifacts/
+
+      - name: Upload WASP image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasp-image
+          path: wasp-artifacts/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin
+          retention-days: 1
+
+
+  build-lantiq:
+    runs-on: ubuntu-24.04
+    needs: build-wasp
+    if: |
+      always() &&
+      (inputs.build_target || 'lantiq-only') != 'wasp-only' &&
+      (needs.build-wasp.result == 'success' || needs.build-wasp.result == 'skipped')
+    steps:
+      - name: Checkout my repo
+        uses: actions/checkout@v4
+
+      - name: Set config file names
+        id: config-files
+        run: |
+          VERSION="${{ inputs.openwrt_version || '24.10' }}"
+          echo "wasp_config=.config-wasp-${VERSION}" >> $GITHUB_OUTPUT
+          echo "lantiq_config=.config-lantiq-${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Generate config hashes
+        id: config-hash
+        run: |
+          WASP_FILE=".config-wasp-${{ inputs.openwrt_version || '24.10' }}"
+          LANTIQ_FILE=".config-lantiq-${{ inputs.openwrt_version || '24.10' }}"
+          echo "wasp_hash=$(sha256sum ${WASP_FILE} | cut -c1-16)" >> $GITHUB_OUTPUT
+          echo "lantiq_hash=$(sha256sum ${LANTIQ_FILE} | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib \
+            gettext git libncurses5-dev libssl-dev python3-setuptools \
+            rsync unzip zlib1g-dev file wget curl 7zip
+
+      - name: Set OpenWrt branch/tag
+        id: openwrt-ref
+        run: |
+          if [ "${{ inputs.openwrt_version }}" = "25.12.4" ]; then
+            echo "ref=v25.12.4" >> $GITHUB_OUTPUT
+            echo "use_patches=true" >> $GITHUB_OUTPUT
+            echo "repo=https://github.com/openwrt/openwrt.git" >> $GITHUB_OUTPUT
+          else
+            echo "ref=openwrt-24.10-fritz.box.7490" >> $GITHUB_OUTPUT
+            echo "use_patches=false" >> $GITHUB_OUTPUT
+            echo "repo=https://github.com/Zappception/openwrt.git" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Clone OpenWrt
+        run: |
+          git clone -b ${{ steps.openwrt-ref.outputs.ref }} \
+            ${{ steps.openwrt-ref.outputs.repo }} openwrt
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply patches for 25.12.4
+        if: steps.openwrt-ref.outputs.use_patches == 'true'
+        working-directory: openwrt
+        run: |
+          git am ../patches/0001-lantig-add-port-5-for-WASP-for-Fritzbox-7490.patch
+          git am ../patches/0002-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0003-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0004-lantiq-add-kmod-avm_wasp-to-bring-up-secondary-ATH79.patch
+          git am ../patches/0005-ath79-add-support-for-AVM-Fritzbox-3490-5490-and-749.patch
+          git am ../patches/0006-config-fix-wasp-boot.patch
+          git am ../patches/0007-fritzx490-wasp-fix-compile.patch
+          git am ../patches/0008-lantiq-add-support-for-AVM-Fritzbox-7490-ath9k-eepro.patch
+          git am ../patches/0009-ath79-add-placeholders-for-ath9k-eeprom-and-ath10k-c.patch
+          git am ../patches/0010-lantiq-add-placeholder-for-the-renesas-usb-fw.patch
+          git am ../patches/0011-lantiq-add-placeholder-for-the-WASP-fw.patch
+          git am ../patches/0014-lantiq-fix-missing-avm-wasp-kernel-module-definition.patch
+          git am ../patches/0015-lantiq-avm-wasp-fix-kernel-6.12-remove-callback.patch
+          echo "All patches applied successfully"
+
+      - name: Update feeds
+        working-directory: openwrt
+        run: |
+          if [ "${{ inputs.update_sources }}" = "true" ]; then
+            ./scripts/feeds update -a
+          else
+            ./scripts/feeds update -a -n
+          fi
+          ./scripts/feeds install -a
+
+      - name: Update Nebula to latest version
+        working-directory: openwrt
+        run: |
+          wget -O feeds/packages/net/nebula/Makefile \
+            https://raw.githubusercontent.com/openwrt/packages/master/net/nebula/Makefile
+          ./scripts/feeds install -a -p packages nebula
+
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: openwrt/dl
+          key: lantiq-${{ inputs.openwrt_version || '24.10' }}-dl-${{ inputs.update_sources == 'true' && github.sha || steps.config-hash.outputs.lantiq_hash }}
+          restore-keys: lantiq-${{ inputs.openwrt_version || '24.10' }}-dl-
+
+      - name: Cache build_dir
+        if: inputs.clean_build != 'true'
+        uses: actions/cache@v4
+        with:
+          path: openwrt/build_dir
+          key: lantiq-${{ inputs.openwrt_version || '24.10' }}-build-${{ steps.config-hash.outputs.lantiq_hash }}-${{ github.sha }}
+          restore-keys: |
+            lantiq-${{ inputs.openwrt_version || '24.10' }}-build-${{ steps.config-hash.outputs.lantiq_hash }}-
+            lantiq-${{ inputs.openwrt_version || '24.10' }}-build-
+
+      - name: Cache staging_dir
+        if: inputs.clean_build != 'true'
+        uses: actions/cache@v4
+        with:
+          path: openwrt/staging_dir
+          key: lantiq-${{ inputs.openwrt_version || '24.10' }}-staging-${{ steps.config-hash.outputs.lantiq_hash }}-${{ github.sha }}
+          restore-keys: |
+            lantiq-${{ inputs.openwrt_version || '24.10' }}-staging-${{ steps.config-hash.outputs.lantiq_hash }}-
+            lantiq-${{ inputs.openwrt_version || '24.10' }}-staging-
+
+      - name: Restore WASP image from cache
+        if: (inputs.build_target || 'lantiq-only') == 'lantiq-only'
+        uses: actions/cache/restore@v4
+        with:
+          path: wasp-bin
+          key: wasp-image-${{ inputs.openwrt_version || '24.10' }}-${{ steps.config-hash.outputs.wasp_hash }}
+
+      - name: Download WASP artifact
+        if: (inputs.build_target || 'lantiq-only') == 'both'
+        uses: actions/download-artifact@v4
+        with:
+          name: wasp-image
+          path: wasp-artifacts
+
+      - name: Move WASP artifact to cache location
+        if: (inputs.build_target || 'lantiq-only') == 'both'
+        run: |
+          mkdir -p wasp-bin
+          cp wasp-artifacts/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin wasp-bin/
+
+      - name: Copy firmware files
+        run: |
+          mkdir -p openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware
+          if [ "${{ inputs.build_target || 'lantiq-only' }}" != "lantiq-initial" ]; then
+            if [ -f wasp-bin/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin ]; then
+              cp wasp-bin/openwrt-ath79-generic-avm_fritzx490-wasp-initramfs-kernel.bin \
+                 openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/wasp-image.bin
+            fi
+          fi
+          cp firmware/ath_tgt_fw1.fw \
+             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/netboot.fw
+          cp firmware/xhcifw.mem \
+             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem
+          cp firmware/ath9k-eeprom-ahb-18100000.wmac.bin \
+             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+          cp firmware/cal-pci-0000:00:00.0.bin \
+             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+          cp firmware/lantiq-vrx200-b.bin \
+             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+
+      - name: Copy custom config files
+        env:
+          WIFI_SSID: ${{ secrets.WIFI_SSID }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+          MESH_PASSWORD: ${{ secrets.MESH_PASSWORD }}
+          DSL_USERNAME: ${{ secrets.DSL_USERNAME }}
+          DSL_PASSWORD: ${{ secrets.DSL_PASSWORD }}
+          DDNS_DOMAIN: ${{ secrets.DDNS_DOMAIN }}
+          DDNS_USERNAME: ${{ secrets.DDNS_USERNAME }}
+          DDNS_PASSWORD: ${{ secrets.DDNS_PASSWORD }}
+          DDNS_URL: ${{ secrets.DDNS_URL }}
+          SSH_PUBKEY: ${{ secrets.SSH_PUBKEY }}
+          STATIC_DHCP_LEASES: ${{ secrets.STATIC_DHCP_LEASES }}
+        run: |
+          mkdir -p openwrt/files/etc/config
+          mkdir -p openwrt/files/etc/dropbear
+          mkdir -p openwrt/files/etc/hotplug.d/iface
+          sed \
+            -e "s|__WIFI_SSID__|$WIFI_SSID|g" \
+            -e "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" \
+            -e "s|__DSL_USERNAME__|$DSL_USERNAME|g" \
+            -e "s|__DSL_PASSWORD__|$DSL_PASSWORD|g" \
+            files/etc/config/network.template \
+            > openwrt/files/etc/config/network
+          sed \
+            -e "s|__SSH_PUBKEY__|$SSH_PUBKEY|g" \
+            files/etc/dropbear/authorized_keys.template \
+            > openwrt/files/etc/dropbear/authorized_keys
+          chmod 600 openwrt/files/etc/dropbear/authorized_keys
+          cp files/etc/config/firewall openwrt/files/etc/config/firewall
+          cp files/etc/config/sqm openwrt/files/etc/config/sqm
+          cp files/etc/config/dhcp openwrt/files/etc/config/dhcp
+          echo -n "$STATIC_DHCP_LEASES" | base64 -d >> openwrt/files/etc/config/dhcp
+          cp files/etc/config/dropbear openwrt/files/etc/config/dropbear
+          cp files/etc/config/system openwrt/files/etc/config/system
+          cp files/etc/hotplug.d/iface/99-dslite-mtu \
+             openwrt/files/etc/hotplug.d/iface/99-dslite-mtu
+          if [ -f files/etc/nebula ]; then
+            cp -r files/etc/nebula openwrt/files/etc/nebula
+            chmod -R 600 openwrt/files/etc/nebula/
+          fi
+          sed \
+            -e "s|__WIFI_SSID__|$WIFI_SSID|g" \
+            -e "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" \
+            -e "s|__MESH_PASSWORD__|$MESH_PASSWORD|g" \
+            files/etc/rc.local.template \
+            > openwrt/files/etc/rc.local
+          chmod +x openwrt/files/etc/rc.local
+          sed \
+            -e "s|__DDNS_DOMAIN__|$DDNS_DOMAIN|g" \
+            -e "s|__DDNS_USERNAME__|$DDNS_USERNAME|g" \
+            -e "s|__DDNS_PASSWORD__|$DDNS_PASSWORD|g" \
+            -e "s|__DDNS_URL__|$DDNS_URL|g" \
+            files/etc/config/ddns.template \
+            > openwrt/files/etc/config/ddns
+
+      - name: Copy Lantiq config
+        run: cp ${{ steps.config-files.outputs.lantiq_config }} openwrt/.config
+
+      - name: Build Lantiq image
+        working-directory: openwrt
+        run: |
+          echo "# CONFIG_VIRTIO_DEBUG is not set" >> target/linux/lantiq/xrx200/config-6.12
+          echo "# CONFIG_NSM is not set" >> target/linux/lantiq/xrx200/config-6.12
+          if [ "${{ inputs.clean_build }}" = "true" ]; then
+            make -j$(nproc) defconfig download clean world
+          else
+            make -j$(nproc) defconfig download world
+          fi
+
+      - name: Upload final images
+        uses: actions/upload-artifact@v4
+        with:
+          name: lantiq-images
+          path: |
+            openwrt/bin/targets/lantiq/xrx200/openwrt-lantiq-xrx200-avm_fritz7490-micron-squashfs-sysupgrade.bin
+            openwrt/bin/targets/lantiq/xrx200/openwrt-lantiq-xrx200-avm_fritz7490-squashfs-sysupgrade.bin
+          retention-days: 30

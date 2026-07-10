@@ -1,0 +1,25 @@
+From b5df35d4e91d92cf7da5fee447470ec690514785 Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Tue, 19 Aug 2025 20:50:30 +0200
+Subject: [PATCH 13/14] Update README.md
+
+---
+ README.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 4c566c7026..473793fd45 100644
+--- a/README.md
++++ b/README.md
+@@ -11,7 +11,7 @@ git pull
+ # Select a specific code revision
+ git branch -a
+ git tag
+-git checkout v24.10.0-fritz.box.7490
++git checkout openwrt-24.10-fritz.box.7490
+  
+ # Update the feeds
+ ./scripts/feeds update -a
+-- 
+2.43.0
+

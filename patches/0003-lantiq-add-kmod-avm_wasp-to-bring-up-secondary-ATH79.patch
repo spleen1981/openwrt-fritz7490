@@ -1,0 +1,46 @@
+From b44ebe22b46ae3489555969271319a6254b3f31e Mon Sep 17 00:00:00 2001
+From: Zappception <79199928+Zappception@users.noreply.github.com>
+Date: Thu, 6 Feb 2025 17:22:06 +0100
+Subject: [PATCH 03/14] lantiq: add kmod avm_wasp to bring up secondary ATH79
+ SoC (WASP)
+
+fix compilation
+---
+ ...0801-remoteproc-add-avm_wasp-driver-kernel-module.patch | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch b/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
+index 9f1e2c94e2..1608ef1284 100644
+--- a/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
++++ b/target/linux/lantiq/patches-6.12/0801-remoteproc-add-avm_wasp-driver-kernel-module.patch
+@@ -26,7 +26,7 @@ Tested-by: Timo Dorfner <timo.capa@gmail.com> # tested on Fritzbox 7490
+ ---
+  drivers/remoteproc/Kconfig    |   10 +
+  drivers/remoteproc/Makefile   |    1 +
+- drivers/remoteproc/avm_wasp.c | 1051 +++++++++++++++++++++++++++++++++
++ drivers/remoteproc/avm_wasp.c | 1052 +++++++++++++++++++++++++++++++++
+  3 files changed, 1062 insertions(+)
+  create mode 100644 drivers/remoteproc/avm_wasp.c
+ 
+@@ -61,7 +61,7 @@ Tested-by: Timo Dorfner <timo.capa@gmail.com> # tested on Fritzbox 7490
+  obj-$(CONFIG_MTK_SCP)			+= mtk_scp.o mtk_scp_ipi.o
+ --- /dev/null
+ +++ b/drivers/remoteproc/avm_wasp.c
+-@@ -0,0 +1,1051 @@
++@@ -0,0 +1,1052 @@
+ +// SPDX-License-Identifier: GPL-2.0-only
+ +/*
+ + * AVM WASP Remote Processor driver
+@@ -80,7 +80,8 @@ Tested-by: Timo Dorfner <timo.capa@gmail.com> # tested on Fritzbox 7490
+ +#include <linux/remoteproc.h>
+ +#include <linux/timekeeping.h>
+ +#include <net/sock.h>
+-+#include <asm-generic/gpio.h>
+++//#include <asm-generic/gpio.h>
+++#include <linux/gpio.h>
+ +
+ +#include "remoteproc_internal.h"
+ +
+-- 
+2.43.0
+

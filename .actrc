@@ -1,0 +1,4 @@
+-W .github/workflows/build.yaml
+-P ubuntu-24.04=catthehacker/ubuntu:act-24.04
+--secret-file .act_secrets
+--artifact-server-path /tmp/act-artifacts
