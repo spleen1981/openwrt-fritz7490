@@ -373,10 +373,14 @@ jobs:
              openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/netboot.fw
           cp firmware/xhcifw.mem \
              openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/renesas_usb_fw.mem
-          cp firmware/ath9k-eeprom-ahb-18100000.wmac.bin \
-             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
-          cp firmware/cal-pci-0000:00:00.0.bin \
-             openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+          if [ "${{ inputs.build_target || 'lantiq-only' }}" != "lantiq-initial" ]; then
+            cp firmware/ath9k-eeprom-ahb-18100000.wmac.bin \
+               openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+            cp firmware/cal-pci-0000:00:00.0.bin \
+               openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
+          else
+            echo "Skipping WiFi calibration blobs for lantiq-initial build"
+          fi
           cp firmware/lantiq-vrx200-b.bin \
              openwrt/target/linux/lantiq/xrx200/base-files/lib/firmware/
 
