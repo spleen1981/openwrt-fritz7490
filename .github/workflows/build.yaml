@@ -306,12 +306,8 @@ jobs:
           fi
           ./scripts/feeds install -a
 
-      - name: Update Nebula to latest version
-        working-directory: openwrt
-        run: |
-          wget -O feeds/packages/net/nebula/Makefile \
-            https://raw.githubusercontent.com/openwrt/packages/master/net/nebula/Makefile
-          ./scripts/feeds install -a -p packages nebula
+      - name: Skip Nebula
+        run: echo "Skipping Nebula update"
 
       - name: Cache downloads
         uses: actions/cache@v4
