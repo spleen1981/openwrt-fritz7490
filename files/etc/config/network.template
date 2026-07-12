@@ -85,9 +85,6 @@ config interface 'dslite'
 	option proto 'dslite'
 	option tunlink 'wan6'
 
-config interface 'nebula0'      
-	option proto 'nebula' 
-	option config_file '/etc/nebula/config.yaml'
 	option multipath 'off'
 
 config route

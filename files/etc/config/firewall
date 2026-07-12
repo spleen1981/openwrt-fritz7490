@@ -124,28 +124,10 @@ config rule
 	option proto 'udp'
 	option target 'ACCEPT'
 
-config zone
-	option name 'vpn'
-	option input 'ACCEPT'
-	option output 'ACCEPT'
-	option forward 'ACCEPT'
-	list device 'nebula0'
 
-config forwarding
-	option src 'vpn'
-	option dest 'lan'
 
-config forwarding
-	option src 'lan'
-	option dest 'vpn'
 
-config forwarding
-	option src 'vpn'
-	option dest 'wan'
 
-config forwarding                    
-        option src 'vpn'             
-        option dest 'vpn'       
 
 config rule
 	option name 'Allow-WireGuard'
@@ -154,9 +136,3 @@ config rule
 	option proto 'udp'
 	option target 'ACCEPT'
 
-config rule
-	option name 'Allow-Nebula'
-	option src 'wan'
-	option dest_port '4242'
-	option proto 'udp'
-	option target 'ACCEPT'
