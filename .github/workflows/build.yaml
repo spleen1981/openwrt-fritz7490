@@ -307,7 +307,7 @@ jobs:
           ./scripts/feeds install -a
 
       - name: Skip Nebula
-        run: echo "Skipping Nebula update"
+        run: echo "Nebula disabled"
 
       - name: Cache downloads
         uses: actions/cache@v4
