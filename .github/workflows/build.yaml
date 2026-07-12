@@ -439,6 +439,11 @@ jobs:
             files/etc/config/ddns.template \
             > openwrt/files/etc/config/ddns
 
+          # Disable DDNS when placeholder secrets are used
+          if [ -z "$DDNS_DOMAIN" ] || [ "$DDNS_DOMAIN" = "DUMMY" ]; then
+            sed -i "s|option enabled .*|option enabled '0'|g" openwrt/files/etc/config/ddns
+          fi
+
       - name: Copy Lantiq config
         run: cp ${{ steps.config-files.outputs.lantiq_config }} openwrt/.config
 
