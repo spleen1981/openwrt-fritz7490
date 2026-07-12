@@ -61,7 +61,7 @@ ssh -o StrictHostKeyChecking=no root@192.168.1.2 "
   uci set wireless.radio0.country='DE'
   uci set wireless.radio0.cell_density='0'
   uci set wireless.radio0.htmode='HT40'
-  uci del wireless.radio0.disabled
+  uci -q del wireless.radio0.disabled
 
   # 5GHz Mesh Interface
   uci set wireless.mesh0=wifi-iface
@@ -96,14 +96,14 @@ ssh -o StrictHostKeyChecking=no root@192.168.1.2 "
   uci set wireless.default_radio0.multicast_to_unicast='1'
   uci set wireless.default_radio0.txpower='23'
   uci set wireless.default_radio0.wps_pushbutton='1'
-  uci del wireless.default_radio0.disabled
+  uci -q del wireless.default_radio0.disabled
 
   # 2.4GHz Radio
   uci set wireless.radio1.channel='1'
   uci set wireless.radio1.country='DE'
   uci set wireless.radio1.cell_density='0'
   uci set wireless.radio1.htmode='HT40'
-  uci del wireless.radio1.disabled
+  uci -q del wireless.radio1.disabled
 
   # 2.4GHz AP
   uci set wireless.default_radio1.ssid='__WIFI_SSID__'
@@ -128,7 +128,7 @@ ssh -o StrictHostKeyChecking=no root@192.168.1.2 "
   uci set wireless.default_radio1.multicast_to_unicast='1'
   uci set wireless.default_radio1.txpower='20'
   uci set wireless.default_radio1.wps_pushbutton='1'
-  uci del wireless.default_radio1.disabled
+  uci -q del wireless.default_radio1.disabled
 
   uci commit
   reload_config
