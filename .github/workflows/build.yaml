@@ -306,9 +306,6 @@ jobs:
           fi
           ./scripts/feeds install -a
 
-      - name: Skip Nebula
-        run: echo "Nebula disabled"
-
       - name: Cache downloads
         uses: actions/cache@v4
         with:
@@ -420,10 +417,6 @@ jobs:
           cp files/etc/config/system openwrt/files/etc/config/system
           cp files/etc/hotplug.d/iface/99-dslite-mtu \
              openwrt/files/etc/hotplug.d/iface/99-dslite-mtu
-          if [ -f files/etc/nebula ]; then
-            cp -r files/etc/nebula openwrt/files/etc/nebula
-            chmod -R 600 openwrt/files/etc/nebula/
-          fi
           sed \
             -e "s|__WIFI_SSID__|$WIFI_SSID|g" \
             -e "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" \
