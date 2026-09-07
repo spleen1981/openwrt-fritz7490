@@ -1,0 +1,28 @@
+{
+  "luci-app-wasp-wireless": {
+    "description": "Manage persistent WASP wireless configuration",
+    "read": {
+      "file": {
+        "/usr/sbin/wasp-wireless status": [
+          "exec"
+        ]
+      }
+    },
+    "write": {
+      "file": {
+        "/usr/sbin/wasp-wireless save": [
+          "exec"
+        ],
+        "/usr/sbin/wasp-wireless restore": [
+          "exec"
+        ],
+        "/usr/sbin/wasp-wireless factory": [
+          "exec"
+        ],
+        "/usr/sbin/wasp-wireless restore-backup": [
+          "exec"
+        ]
+      }
+    }
+  }
+}

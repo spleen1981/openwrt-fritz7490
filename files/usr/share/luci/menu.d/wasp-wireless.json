@@ -1,0 +1,15 @@
+{
+  "admin/system/wasp-wireless": {
+    "title": "WASP Wireless",
+    "order": 85,
+    "action": {
+      "type": "view",
+      "path": "system/wasp-wireless"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-wasp-wireless"
+      ]
+    }
+  }
+}

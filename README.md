@@ -667,3 +667,7 @@ wasp-wireless show
 ```
 
 At boot, `saved` is applied when valid; otherwise the factory configuration embedded in the firmware is used. `factory` preserves the current saved configuration as `saved.bak`. Validation only checks SSH, export/import, and command success, so AP-less, mesh-only, STA, and disabled-radio configurations remain valid. Stored files contain wireless keys in plain text and are root-only.
+
+### LuCI interface
+
+The same operations are available on the Lantiq router under **System → WASP Wireless**. The page provides buttons to save the current configuration, restore the saved configuration, restore the previous backup, restore the firmware factory configuration, and refresh the current status. Factory restore requires confirmation.
