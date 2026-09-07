@@ -424,6 +424,16 @@ jobs:
             files/etc/rc.local.template \
             > openwrt/files/etc/rc.local
           chmod +x openwrt/files/etc/rc.local
+          mkdir -p openwrt/files/etc/wasp-wireless openwrt/files/usr/sbin
+          cp files/usr/sbin/wasp-wireless openwrt/files/usr/sbin/wasp-wireless
+          chmod 755 openwrt/files/usr/sbin/wasp-wireless
+          sed \
+            -e "s|__WIFI_SSID__|$WIFI_SSID|g" \
+            -e "s|__WIFI_PASSWORD__|$WIFI_PASSWORD|g" \
+            -e "s|__MESH_PASSWORD__|$MESH_PASSWORD|g" \
+            files/etc/wasp-wireless/factory.template \
+            > openwrt/files/etc/wasp-wireless/factory
+          chmod 600 openwrt/files/etc/wasp-wireless/factory
           sed \
             -e "s|__DDNS_DOMAIN__|$DDNS_DOMAIN|g" \
             -e "s|__DDNS_USERNAME__|$DDNS_USERNAME|g" \

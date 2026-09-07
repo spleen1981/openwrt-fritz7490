@@ -1,0 +1,81 @@
+#!/bin/sh
+HOST="${WASP_HOST:-192.168.1.2}"
+DIR=/etc/wasp-wireless
+FACTORY="$DIR/factory"
+SAVED="$DIR/saved"
+BACKUP="$DIR/saved.bak"
+TMP="$DIR/.saved.tmp"
+SSH="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 root@$HOST"
+
+log(){ logger -t wasp-wireless "$*"; echo "$*"; }
+valid(){ [ -s "$1" ] && grep -Eq "^package '?wireless'?[[:space:]]*$" "$1"; }
+reachable(){
+    tries=0
+    while [ $tries -lt 10 ]; do
+        $SSH true >/dev/null 2>&1 && return 0
+        tries=$(($tries+1))
+        sleep 1
+    done
+    return 1
+}
+
+apply(){
+    file="$1"; name="$2"
+    valid "$file" || { log "ERROR: invalid $name configuration"; return 1; }
+    reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
+    if $SSH 'rm -f /tmp/wasp-wireless.uci; cat > /tmp/wasp-wireless.uci; grep -Eq "^package '\''?wireless'\''?[[:space:]]*$" /tmp/wasp-wireless.uci || exit 1; rm -f /etc/config/wireless; uci import wireless < /tmp/wasp-wireless.uci || exit 1; uci commit wireless || exit 1; wifi reload || exit 1; uci export wireless >/dev/null' < "$file"; then
+        log "Applied $name configuration"
+    else
+        log "ERROR: failed to apply $name configuration"
+        return 1
+    fi
+}
+
+save(){
+    mkdir -p "$DIR"; chmod 700 "$DIR"; rm -f "$TMP"
+    reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
+    $SSH 'uci export wireless' > "$TMP" || { rm -f "$TMP"; return 1; }
+    valid "$TMP" || { rm -f "$TMP"; log "ERROR: invalid export"; return 1; }
+    [ ! -f "$SAVED" ] || cp "$SAVED" "$BACKUP" || return 1
+    chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
+    log "Saved current WASP wireless configuration"
+}
+
+boot(){
+    if valid "$SAVED"; then
+        apply "$SAVED" saved && return 0
+        log "Saved configuration failed; using factory"
+    fi
+    apply "$FACTORY" factory
+}
+
+factory(){
+    if [ -f "$SAVED" ]; then cp "$SAVED" "$BACKUP" || return 1; rm -f "$SAVED"; sync; fi
+    apply "$FACTORY" factory
+}
+
+restore_backup(){
+    valid "$BACKUP" || { log "ERROR: no valid saved.bak"; return 1; }
+    cp "$BACKUP" "$TMP" || return 1; chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
+    apply "$SAVED" backup
+}
+
+status(){
+    reachable && echo 'WASP SSH: reachable' || echo 'WASP SSH: unreachable'
+    valid "$SAVED" && echo 'Boot configuration: saved' || echo 'Boot configuration: factory'
+    valid "$FACTORY" && echo 'Factory configuration: available' || echo 'Factory configuration: invalid'
+    valid "$BACKUP" && echo 'Previous backup: available' || echo 'Previous backup: unavailable'
+    reachable && { echo; $SSH 'wifi status'; }
+}
+
+mkdir -p "$DIR"; chmod 700 "$DIR"
+case "${1:-}" in
+ save) save ;;
+ restore) apply "$SAVED" saved ;;
+ factory) factory ;;
+ restore-backup) restore_backup ;;
+ boot) boot ;;
+ status) status ;;
+ show) $SSH 'uci export wireless' ;;
+ *) echo 'Usage: wasp-wireless {save|restore|factory|restore-backup|boot|status|show}'; exit 1 ;;
+esac

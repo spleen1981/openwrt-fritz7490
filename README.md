@@ -644,3 +644,26 @@ This project inherits licenses from OpenWrt (GPL-2.0) and included components. S
 ---
 
 **⚠️ Disclaimer**: Flashing custom firmware may void your warranty and carries risk. Proceed at your own risk. Always have a backup plan to recover your device.
+
+## Persistent WASP Wireless Configuration
+
+The WASP runs from initramfs, so direct LuCI changes are normally lost after reboot. The Lantiq firmware stores an optional wireless backup and reapplies it automatically.
+
+After changing wireless settings in WASP LuCI at `http://192.168.1.2/`, run on the Lantiq router:
+
+```sh
+wasp-wireless save
+```
+
+Available commands:
+
+```sh
+wasp-wireless save
+wasp-wireless restore
+wasp-wireless factory
+wasp-wireless restore-backup
+wasp-wireless status
+wasp-wireless show
+```
+
+At boot, `saved` is applied when valid; otherwise the factory configuration embedded in the firmware is used. `factory` preserves the current saved configuration as `saved.bak`. Validation only checks SSH, export/import, and command success, so AP-less, mesh-only, STA, and disabled-radio configurations remain valid. Stored files contain wireless keys in plain text and are root-only.
