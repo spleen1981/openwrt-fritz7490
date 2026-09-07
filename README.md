@@ -670,4 +670,4 @@ At boot, `saved` is applied when valid; otherwise the factory configuration embe
 
 ### LuCI interface
 
-The same operations are available on the Lantiq router under **System → WASP Wireless**. The page provides buttons to save the current configuration, restore the saved configuration, restore the previous backup, restore the firmware factory configuration, and refresh the current status. Factory restore requires confirmation.
+The same operations are available on the Lantiq router under **System → WASP Wireless**. The page provides buttons to save the current configuration, restore the saved configuration, restore the previous backup, restore the firmware factory configuration, open WASP LuCI, and refresh the current status. The action bar appears above a concise status summary; full redacted status is available in an expandable section. Factory restore requires confirmation.

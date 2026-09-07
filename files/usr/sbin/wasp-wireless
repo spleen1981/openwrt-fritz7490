@@ -5,7 +5,7 @@ FACTORY="$DIR/factory"
 SAVED="$DIR/saved"
 BACKUP="$DIR/saved.bak"
 TMP="$DIR/.saved.tmp"
-SSH="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 root@$HOST"
+SSH="ssh -o StrictHostKeyChecking=no root@$HOST"
 
 log(){ logger -t wasp-wireless "$*"; echo "$*"; }
 valid(){ [ -s "$1" ] && grep -Eq "^package '?wireless'?[[:space:]]*$" "$1"; }
