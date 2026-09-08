@@ -6,8 +6,8 @@ Subject: [PATCH 08/14] lantiq: add support for AVM Fritzbox 7490 ath9k eeprom
 
 ---
  .../etc/hotplug.d/firmware/11-ath10k-caldata  | 27 +++++++++++++++++++
- .../etc/hotplug.d/firmware/12-ath9k-eeprom    |  6 ++++-
- 2 files changed, 32 insertions(+), 1 deletion(-)
+ .../etc/hotplug.d/firmware/12-ath9k-eeprom    |  5 +++-
+ 2 files changed, 31 insertions(+), 1 deletion(-)
  create mode 100644 target/linux/lantiq/xrx200/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
 
 diff --git a/target/linux/lantiq/xrx200/base-files/etc/hotplug.d/firmware/11-ath10k-caldata b/target/linux/lantiq/xrx200/base-files/etc/hotplug.d/firmware/11-ath10k-caldata
@@ -55,7 +55,7 @@ index a3968b2303..319aacb67e 100644
  	"ath9k-eeprom-pci-0000:00:0e.0.bin" | \
  	"ath9k-eeprom-pci-0000:01:00.0.bin" | \
  	"ath9k-eeprom-pci-0000:02:00.0.bin")
-@@ -13,7 +14,10 @@ case "$FIRMWARE" in
+@@ -13,7 +14,9 @@ case "$FIRMWARE" in
  		case "$board" in
  			avm,fritz3370-rev2-hynix|\
  			avm,fritz3370-rev2-micron|\
@@ -63,8 +63,7 @@ index a3968b2303..319aacb67e 100644
 +			avm,fritz7362sl|\
 +			avm,fritz7490|\
 +			avm,fritz7490-micron)
- 				caldata_extract_reverse "urlader" 0x1541 0x440
-+				ath9k_patch_mac "$(strings "$(find_mtd_chardev urlader)" | grep -A1 -x macwlan | grep -E -i '^([0-9a-f]{2}:){5}[0-9a-f]{2}$' | grep -v -i '^00:04:0e:ff:ff:' | head -n1)"
+ 				caldata_extract_reverse "urlader" 0x1556 0x440
  				;;
  			avm,fritz3390)
 -- 
