@@ -5,9 +5,26 @@
 
 var command = '/usr/sbin/wasp-wireless';
 var waspLuciUrl = 'http://192.168.1.2/';
+var uplinkCommand = '/usr/sbin/wasp-uplink-fix';
 
 function run(action) {
 	return fs.exec(command, [ action ]).then(function(res) {
+		var output = '';
+
+		if (res.stdout)
+			output += res.stdout;
+		if (res.stderr)
+			output += (output ? '\n' : '') + res.stderr;
+
+		if (res.code !== 0)
+			throw new Error(output || _('Command failed with exit code %d').format(res.code));
+
+		return output || _('Command completed successfully.');
+	});
+}
+
+function runUplink(action) {
+	return fs.exec(uplinkCommand, [ action ]).then(function(res) {
 		var output = '';
 
 		if (res.stdout)
@@ -70,12 +87,20 @@ function summarizeStatus(status) {
 
 return view.extend({
 	load: function() {
-		return run('status').catch(function(err) {
-			return _('Unable to read status: %s').format(err.message || err);
-		});
+		return Promise.all([
+			run('status').catch(function(err) {
+				return _('Unable to read status: %s').format(err.message || err);
+			}),
+			runUplink('status').catch(function(err) {
+				return _('Unable to read status: %s').format(err.message || err);
+			})
+		]);
 	},
 
-	render: function(status) {
+	render: function(data) {
+	var status = data[0];
+	var uplinkStatus = data[1];
+
 		var summaryBox = E('pre', {
 			'class': 'alert-message',
 			'style': 'white-space: pre-wrap;'
@@ -132,6 +157,76 @@ return view.extend({
 			]);
 		}
 
+		var uplinkStatusBox = E('pre', {
+			'style': 'white-space: pre-wrap;'
+		}, [ uplinkStatus ]);
+
+		function refreshUplink() {
+			ui.showModal(_('WASP Uplink Fix'), [ E('p', { 'class': 'spinning' }, _('Refreshing status...')) ]);
+			return runUplink('status').then(function(output) {
+				uplinkStatusBox.textContent = output;
+				ui.hideModal();
+			}).catch(function(err) {
+				ui.hideModal();
+				ui.addNotification(null, E('p', {}, err.message || String(err)), 'error');
+			});
+		}
+
+		function executeUplink(action, title, confirmation) {
+			var start = function() {
+				ui.showModal(title, [ E('p', { 'class': 'spinning' }, _('Operation in progress...')) ]);
+				return runUplink(action).then(function(output) {
+					ui.hideModal();
+					ui.addNotification(null, E('pre', { 'style': 'white-space: pre-wrap;' }, output), 'info');
+					return refreshUplink();
+				}).catch(function(err) {
+					ui.hideModal();
+					ui.addNotification(null, E('p', {}, err.message || String(err)), 'error');
+				});
+			};
+
+			if (!confirmation)
+				return start();
+
+			ui.showModal(title, [
+				E('p', {}, confirmation),
+				E('div', { 'class': 'right' }, [
+					E('button', {
+						'class': 'btn',
+						'click': ui.hideModal
+					}, [ _('Cancel') ]),
+					' ',
+					E('button', {
+						'class': 'btn cbi-button-action important',
+						'click': start
+					}, [ _('Continue') ])
+				])
+			]);
+		}
+
+		var uplinkActions = E('div', { 'class': 'cbi-page-actions' }, [
+			E('button', {
+				'class': 'btn cbi-button-action',
+				'click': function() {
+					return executeUplink(
+						'enable',
+						_('Enable WASP uplink fix'),
+						_('This adds a default route via 192.168.1.2 (WASP) and forces DNS resolution through public servers (8.8.8.8, 1.1.1.1), bypassing the unused PPPoE/DSL WAN. Continue?')
+					);
+				}
+			}, [ _('Enable') ]),
+			' ',
+			E('button', {
+				'class': 'btn cbi-button-negative',
+				'click': function() { return executeUplink('disable', _('Disable WASP uplink fix')); }
+			}, [ _('Disable') ]),
+			' ',
+			E('button', {
+				'class': 'btn',
+				'click': refreshUplink
+			}, [ _('Refresh status') ])
+		]);
+
 		var actions = E('div', { 'class': 'cbi-page-actions' }, [
 			E('button', {
 				'class': 'btn cbi-button-action',
@@ -184,7 +279,13 @@ return view.extend({
 			E('details', {}, [
 				E('summary', { 'style': 'cursor: pointer;' }, [ _('Show full status') ]),
 				detailsBox
-			])
+			]),
+			E('h3', {}, [ _('WASP Uplink Connectivity Fix') ]),
+			E('p', {}, [
+				_('Use this only when internet connectivity is provided through the WASP wireless client uplink instead of the Lantiq PPPoE/DSL WAN. Adds a default route via the WASP and forces DNS resolution through public servers. Disabled by default; safe to leave off for regular WAN setups.')
+			]),
+			uplinkActions,
+			uplinkStatusBox
 		]);
 	},
 

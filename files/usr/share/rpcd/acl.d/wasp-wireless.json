@@ -5,6 +5,9 @@
       "file": {
         "/usr/sbin/wasp-wireless status": [
           "exec"
+        ],
+        "/usr/sbin/wasp-uplink-fix status": [
+          "exec"
         ]
       }
     },
@@ -20,6 +23,12 @@
           "exec"
         ],
         "/usr/sbin/wasp-wireless restore-backup": [
+          "exec"
+        ],
+        "/usr/sbin/wasp-uplink-fix enable": [
+          "exec"
+        ],
+        "/usr/sbin/wasp-uplink-fix disable": [
           "exec"
         ]
       }

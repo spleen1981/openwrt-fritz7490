@@ -1,0 +1,65 @@
+#!/bin/sh
+# Fix opzionale (disattivato di default) per instradare il traffico LAN
+# attraverso l'uplink wifi client del WASP e sistemare i DNS quando la
+# WAN Lantiq (PPPoE/DSL) non e' in uso.
+
+ROUTE_SECTION="wasp_uplink_route"
+GATEWAY="192.168.1.2"
+DNS_SERVERS="8.8.8.8 1.1.1.1"
+
+log(){ logger -t wasp-uplink-fix "$*"; echo "$*"; }
+
+enable(){
+	uci -q delete network.$ROUTE_SECTION 2>/dev/null
+	uci set network.$ROUTE_SECTION="route"
+	uci set network.$ROUTE_SECTION.interface="lan"
+	uci set network.$ROUTE_SECTION.target="0.0.0.0"
+	uci set network.$ROUTE_SECTION.netmask="0.0.0.0"
+	uci set network.$ROUTE_SECTION.gateway="$GATEWAY"
+	uci set network.$ROUTE_SECTION.metric="10"
+	uci commit network
+
+	uci -q delete dhcp.@dnsmasq[0].server 2>/dev/null
+	for s in $DNS_SERVERS; do
+		uci add_list dhcp.@dnsmasq[0].server="$s"
+	done
+	uci set dhcp.@dnsmasq[0].noresolv="1"
+	uci commit dhcp
+
+	/etc/init.d/network reload
+	/etc/init.d/dnsmasq restart
+	log "WASP uplink fix enabled (gateway=$GATEWAY)"
+}
+
+disable(){
+	uci -q delete network.$ROUTE_SECTION 2>/dev/null
+	uci commit network
+
+	uci -q delete dhcp.@dnsmasq[0].server 2>/dev/null
+	uci -q delete dhcp.@dnsmasq[0].noresolv 2>/dev/null
+	uci commit dhcp
+
+	/etc/init.d/network reload
+	/etc/init.d/dnsmasq restart
+	log "WASP uplink fix disabled"
+}
+
+status(){
+	if uci -q get network.$ROUTE_SECTION.gateway >/dev/null 2>&1; then
+		echo "Route: enabled (gateway=$(uci -q get network.$ROUTE_SECTION.gateway))"
+	else
+		echo "Route: disabled"
+	fi
+	if [ "$(uci -q get dhcp.@dnsmasq[0].noresolv 2>/dev/null)" = "1" ]; then
+		echo "DNS fix: enabled (servers: $(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | tr '\n' ' '))"
+	else
+		echo "DNS fix: disabled"
+	fi
+}
+
+case "${1:-}" in
+	enable) enable ;;
+	disable) disable ;;
+	status) status ;;
+	*) echo "Usage: wasp-uplink-fix {enable|disable|status}"; exit 1 ;;
+esac

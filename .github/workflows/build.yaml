@@ -427,6 +427,8 @@ jobs:
           mkdir -p openwrt/files/etc/wasp-wireless openwrt/files/usr/sbin
           cp files/usr/sbin/wasp-wireless openwrt/files/usr/sbin/wasp-wireless
           chmod 755 openwrt/files/usr/sbin/wasp-wireless
+          cp files/usr/sbin/wasp-uplink-fix openwrt/files/usr/sbin/wasp-uplink-fix
+          chmod 755 openwrt/files/usr/sbin/wasp-uplink-fix
           mkdir -p openwrt/files/www/luci-static/resources/view/system
           mkdir -p openwrt/files/usr/share/luci/menu.d openwrt/files/usr/share/rpcd/acl.d
           cp files/www/luci-static/resources/view/system/wasp-wireless.js \
