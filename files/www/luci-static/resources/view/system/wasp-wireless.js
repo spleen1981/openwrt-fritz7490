@@ -43,6 +43,17 @@ function redactStatus(status) {
 	return status.replace(/("key"\s*:\s*)"(?:[^"\\]|\\.)*"/g, '$1"***"');
 }
 
+function summarizeRadiosFallback(jsonPart) {
+	var lines = [];
+	var re = /"(radio\d+)"\s*:\s*\{\s*"up"\s*:\s*(true|false)/g;
+	var m;
+
+	while ((m = re.exec(jsonPart)) !== null)
+		lines.push(m[1] + ': ' + (m[2] === 'true' ? _('up') : _('down')));
+
+	return lines;
+}
+
 function summarizeStatus(status) {
 	var jsonStart = status.indexOf('{');
 	var header = (jsonStart >= 0 ? status.substring(0, jsonStart) : status).trim();
@@ -50,36 +61,47 @@ function summarizeStatus(status) {
 
 	if (jsonStart < 0)
 		return lines.join('\n') || _('Status unavailable');
-
+	var jsonPart = status.substring(jsonStart);
 	try {
-		var data = JSON.parse(status.substring(jsonStart));
+		var data = JSON.parse(jsonPart);
 		var radios = Object.keys(data).filter(function(name) {
 			return data[name] && typeof data[name] === 'object' && Array.isArray(data[name].interfaces);
 		});
-		var radiosUp = 0;
-		var modes = {};
 
-		radios.forEach(function(name) {
+		if (!radios.length)
+			throw new Error('no radios found in status');
+
+		radios.sort().forEach(function(name) {
 			var radio = data[name];
-			if (radio.up === true)
-				radiosUp++;
+			var modes = {};
 
 			radio.interfaces.forEach(function(iface) {
 				var mode = iface && iface.config && iface.config.mode;
 				if (mode)
 					modes[mode] = (modes[mode] || 0) + 1;
 			});
-		});
 
-		lines.push(_('Radios: %d/%d up').format(radiosUp, radios.length));
-		lines.push(_('Interfaces: %d AP, %d mesh, %d station').format(
-			modes.ap || 0,
-			modes.mesh || 0,
-			modes.sta || 0
-		));
+			var modeParts = [];
+			if (modes.ap)
+				modeParts.push(_('%d AP').format(modes.ap));
+			if (modes.mesh)
+				modeParts.push(_('%d mesh').format(modes.mesh));
+			if (modes.sta)
+				modeParts.push(_('%d station').format(modes.sta));
+
+			lines.push(
+				name + ': ' + (radio.up === true ? _('up') : _('down')) +
+				(modeParts.length ? ' (' + modeParts.join(', ') + ')' : '')
+			);
+		});
 	}
 	catch (e) {
-		lines.push(_('Wireless details could not be summarized.'));
+		var fallback = summarizeRadiosFallback(jsonPart);
+
+		if (fallback.length)
+			lines = lines.concat(fallback);
+		else
+			lines.push(_('Radio status could not be parsed.'));
 	}
 
 	return lines.join('\n');
