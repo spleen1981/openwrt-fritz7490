@@ -29,9 +29,22 @@ done
 return 1
 }
 
+# Esegue $SSH "$@" sopprimendo solo la riga benigna di skip host-key
+# check che alcuni client ssh stampano con StrictHostKeyChecking=no
+# (necessario perche' il WASP rigenera una host key nuova ad ogni boot,
+# girando da initramfs). Qualsiasi altro messaggio resta intatto.
+ssh_quiet(){
+	_err="$DIR/.ssh_stderr.$$"
+	$SSH "$@" 2>"$_err"
+	_rc=$?
+	grep -v '^ssh: Caution, skipping hostkey check' "$_err" >&2
+	rm -f "$_err"
+	return $_rc
+}
+
 export_config(){
 reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
-$SSH 'for pkg in '"$PACKAGES"'; do
+ssh_quiet 'for pkg in '"$PACKAGES"'; do
 echo "# === BEGIN $pkg ==="
 uci export "$pkg"
 echo "# === END $pkg ==="
@@ -42,7 +55,7 @@ apply(){
 file="$1"; name="$2"
 valid "$file" || { log "ERROR: invalid $name configuration"; return 1; }
 reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
-if $SSH 'set -e
+if ssh_quiet 'set -e
 rm -f /tmp/wasp-wireless.export
 cat > /tmp/wasp-wireless.export
 for pkg in '"$PACKAGES"'; do
@@ -120,7 +133,7 @@ reachable && echo 'WASP SSH: reachable' || echo 'WASP SSH: unreachable'
 valid "$SAVED" && echo 'Boot configuration: saved' || echo 'Boot configuration: factory'
 valid "$FACTORY" && echo 'Factory configuration: available' || echo 'Factory configuration: not yet captured'
 valid "$BACKUP" && echo 'Previous backup: available' || echo 'Previous backup: unavailable'
-reachable && { echo; $SSH 'wifi status'; }
+reachable && { echo; ssh_quiet 'wifi status'; }
 }
 
 mkdir -p "$DIR"; chmod 700 "$DIR"
