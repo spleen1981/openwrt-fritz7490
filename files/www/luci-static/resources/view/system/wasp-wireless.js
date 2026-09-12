@@ -290,12 +290,9 @@ E('button', {
 ]);
 
 return E([], [
-E('h2', {}, [ _('WASP Wireless Configuration') ]),
+E('h2', {}, [ _('WASP Configuration Backup') ]),
 E('p', {}, [
-_('The WASP runs from initramfs. Save the current configuration on the Lantiq router to restore it automatically after reboot.')
-]),
-E('p', {}, [
-_('Saved configurations contain wireless passwords in plain text and are readable only by root.')
+_('The WASP runs from initramfs, so its entire configuration (network, firewall, dhcp, system, wireless, ...) is normally lost after reboot. Save the current configuration on the Lantiq router to restore it automatically at every boot: each UCI package is exported from the WASP and re-imported when restored. If no configuration has ever been saved, the current settings are captured automatically as the factory snapshot on first boot.')
 ]),
 actions,
 E('h3', {}, [ _('Status') ]),
@@ -304,7 +301,7 @@ E('details', {}, [
 E('summary', { 'style': 'cursor: pointer;' }, [ _('Show full status') ]),
 detailsBox
 ]),
-E('h3', {}, [ _('WASP Uplink Connectivity Fix') ]),
+E('h2', {}, [ _('WASP Uplink Connectivity Fix') ]),
 E('p', {}, [
 _('Use this only when internet connectivity is provided through the WASP wireless client uplink instead of the Lantiq PPPoE/DSL WAN. Adds a default route via the WASP and forces DNS resolution through public servers. Disabled by default; safe to leave off for regular WAN setups.')
 ]),
