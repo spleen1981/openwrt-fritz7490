@@ -4,7 +4,7 @@
 # WAN Lantiq (PPPoE/DSL) non e' in uso.
 
 ROUTE_SECTION="wasp_uplink_route"
-GATEWAY="192.168.1.2"
+HOST="${WASP_HOST:-192.168.1.2}"
 DNS_SERVERS="8.8.8.8 1.1.1.1"
 
 log(){ logger -t wasp-uplink-fix "$*"; echo "$*"; }
@@ -15,7 +15,7 @@ enable(){
 	uci set network.$ROUTE_SECTION.interface="lan"
 	uci set network.$ROUTE_SECTION.target="0.0.0.0"
 	uci set network.$ROUTE_SECTION.netmask="0.0.0.0"
-	uci set network.$ROUTE_SECTION.gateway="$GATEWAY"
+	uci set network.$ROUTE_SECTION.gateway="$HOST"
 	uci set network.$ROUTE_SECTION.metric="10"
 	uci commit network
 
@@ -28,7 +28,7 @@ enable(){
 
 	/etc/init.d/network reload
 	/etc/init.d/dnsmasq restart
-	log "WASP uplink fix enabled (gateway=$GATEWAY)"
+	log "WASP uplink fix enabled (gateway=$HOST)"
 }
 
 disable(){
