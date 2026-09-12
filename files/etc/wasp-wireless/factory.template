@@ -1,0 +1,408 @@
+# === BEGIN dhcp ===
+package dhcp
+
+config dhcp 'lan'
+option interface 'lan'
+option start '100'
+option limit '150'
+option leasetime '12h'
+option dhcpv4 'server'
+option ignore '1'
+
+config odhcpd 'odhcpd'
+option maindhcp '1'
+option leasefile '/tmp/odhcpd.leases'
+option leasetrigger '/usr/sbin/odhcpd-update'
+option loglevel '4'
+option piodir '/tmp/odhcpd-piodir'
+option hostsdir '/tmp/hosts'
+
+# === END dhcp ===
+# === BEGIN dropbear ===
+package dropbear
+
+config dropbear 'main'
+option enable '1'
+option PasswordAuth 'on'
+option RootPasswordAuth 'on'
+option Port '22'
+
+# === END dropbear ===
+# === BEGIN firewall ===
+package firewall
+
+config defaults
+option syn_flood '1'
+option input 'REJECT'
+option output 'ACCEPT'
+option forward 'REJECT'
+
+config zone
+option name 'lan'
+list network 'lan'
+option input 'ACCEPT'
+option output 'ACCEPT'
+option forward 'ACCEPT'
+
+config zone
+option name 'wan'
+list network 'wan'
+list network 'wan6'
+option input 'REJECT'
+option output 'ACCEPT'
+option forward 'DROP'
+option masq '1'
+option mtu_fix '1'
+
+config forwarding
+option src 'lan'
+option dest 'wan'
+
+config rule
+option name 'Allow-DHCP-Renew'
+option src 'wan'
+option proto 'udp'
+option dest_port '68'
+option target 'ACCEPT'
+option family 'ipv4'
+
+config rule
+option name 'Allow-Ping'
+option src 'wan'
+option proto 'icmp'
+option icmp_type 'echo-request'
+option family 'ipv4'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-IGMP'
+option src 'wan'
+option proto 'igmp'
+option family 'ipv4'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-DHCPv6'
+option src 'wan'
+option proto 'udp'
+option dest_port '546'
+option family 'ipv6'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-MLD'
+option src 'wan'
+option proto 'icmp'
+option src_ip 'fe80::/10'
+list icmp_type '130/0'
+list icmp_type '131/0'
+list icmp_type '132/0'
+list icmp_type '143/0'
+option family 'ipv6'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-ICMPv6-Input'
+option src 'wan'
+option proto 'icmp'
+list icmp_type 'echo-request'
+list icmp_type 'echo-reply'
+list icmp_type 'destination-unreachable'
+list icmp_type 'packet-too-big'
+list icmp_type 'time-exceeded'
+list icmp_type 'bad-header'
+list icmp_type 'unknown-header-type'
+list icmp_type 'router-solicitation'
+list icmp_type 'neighbour-solicitation'
+list icmp_type 'router-advertisement'
+list icmp_type 'neighbour-advertisement'
+option limit '1000/sec'
+option family 'ipv6'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-ICMPv6-Forward'
+option src 'wan'
+option dest '*'
+option proto 'icmp'
+list icmp_type 'echo-request'
+list icmp_type 'echo-reply'
+list icmp_type 'destination-unreachable'
+list icmp_type 'packet-too-big'
+list icmp_type 'time-exceeded'
+list icmp_type 'bad-header'
+list icmp_type 'unknown-header-type'
+option limit '1000/sec'
+option family 'ipv6'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-IPSec-ESP'
+option src 'wan'
+option dest 'lan'
+option proto 'esp'
+option target 'ACCEPT'
+
+config rule
+option name 'Allow-ISAKMP'
+option src 'wan'
+option dest 'lan'
+option dest_port '500'
+option proto 'udp'
+option target 'ACCEPT'
+
+# === END firewall ===
+# === BEGIN luci ===
+package luci
+
+config core 'main'
+option lang 'auto'
+option mediaurlbase '/luci-static/bootstrap'
+option resourcebase '/luci-static/resources'
+option ubuspath '/ubus/'
+
+config extern 'flash_keep'
+option uci '/etc/config/'
+option dropbear '/etc/dropbear/'
+option openvpn '/etc/openvpn/'
+option passwd '/etc/passwd'
+option opkg '/etc/opkg.conf'
+option firewall '/etc/firewall.user'
+option uploads '/lib/uci/upload/'
+
+config internal 'languages'
+
+config internal 'sauth'
+option sessionpath '/tmp/luci-sessions'
+option sessiontime '3600'
+
+config internal 'ccache'
+option enable '1'
+
+config internal 'themes'
+option Bootstrap '/luci-static/bootstrap'
+option BootstrapDark '/luci-static/bootstrap-dark'
+option BootstrapLight '/luci-static/bootstrap-light'
+
+config internal 'apply'
+option rollback '90'
+option holdoff '4'
+option timeout '5'
+option display '1.5'
+
+config internal 'diag'
+option dns 'openwrt.org'
+option ping 'openwrt.org'
+option route 'openwrt.org'
+
+# === END luci ===
+# === BEGIN network ===
+package network
+
+config interface 'loopback'
+option device 'lo'
+option proto 'static'
+list ipaddr '127.0.0.1/8'
+
+config globals 'globals'
+option dhcp_default_duid '0004c8d902792cfb4799a1bce5773199d2f6'
+option ula_prefix 'fd1a:d7c6:f979::/48'
+
+config device
+option name 'br-lan'
+option type 'bridge'
+list ports 'eth0'
+option mtu '1424'
+
+config interface 'lan'
+option device 'br-lan'
+option proto 'static'
+list ipaddr '192.168.1.2/24'
+option ip6assign '60'
+
+config interface 'wan'
+option device 'eth1'
+option proto 'dhcp'
+
+config interface 'wan6'
+option device 'eth1'
+option proto 'dhcpv6'
+
+# === END network ===
+# === BEGIN openssl ===
+package openssl
+
+config provider 'legacy'
+option enabled '1'
+
+# === END openssl ===
+# === BEGIN radius ===
+package radius
+
+config radius
+option disabled '1'
+option ipv6 '1'
+option log_level '3'
+option ca_cert '/etc/radius/ca.pem'
+option cert '/etc/radius/cert.pem'
+option key '/etc/radius/key.pem'
+option users '/etc/radius/users'
+option clients '/etc/radius/clients'
+option auth_port '1812'
+option acct_port '1813'
+
+# === END radius ===
+# === BEGIN rpcd ===
+package rpcd
+
+config rpcd
+option socket '/var/run/ubus/ubus.sock'
+option timeout '30'
+
+config login
+option username 'root'
+option password '$p$root'
+list read '*'
+list write '*'
+
+# === END rpcd ===
+# === BEGIN system ===
+package system
+
+config system
+option hostname 'Fritz7490-WASP'
+option timezone 'GMT0'
+option zonename 'UTC'
+option ttylogin '0'
+option log_size '128'
+option urandom_seed '0'
+option description 'Fritz7490-WASP'
+
+config timeserver 'ntp'
+option enabled '1'
+option enable_server '0'
+list server '0.openwrt.pool.ntp.org'
+list server '1.openwrt.pool.ntp.org'
+list server '2.openwrt.pool.ntp.org'
+list server '3.openwrt.pool.ntp.org'
+
+# === END system ===
+# === BEGIN uhttpd ===
+package uhttpd
+
+config uhttpd 'main'
+list listen_http '0.0.0.0:80'
+list listen_http '[::]:80'
+list listen_https '0.0.0.0:443'
+list listen_https '[::]:443'
+option redirect_https '0'
+option home '/www'
+option rfc1918_filter '1'
+option max_requests '3'
+option max_connections '100'
+option cert '/etc/uhttpd.crt'
+option key '/etc/uhttpd.key'
+option cgi_prefix '/cgi-bin'
+list lua_prefix '/cgi-bin/luci=/usr/lib/lua/luci/sgi/uhttpd.lua'
+option script_timeout '60'
+option network_timeout '30'
+option http_keepalive '20'
+option tcp_keepalive '1'
+option ubus_prefix '/ubus'
+
+config cert 'defaults'
+option days '397'
+option key_type 'ec'
+option bits '2048'
+option ec_curve 'P-256'
+option country 'ZZ'
+option state 'Somewhere'
+option location 'Unknown'
+option commonname 'OpenWrt'
+
+# === END uhttpd ===
+# === BEGIN wireless ===
+package wireless
+
+config wifi-device 'radio0'
+option type 'mac80211'
+option path 'pci0000:00/0000:00:00.0'
+option band '5g'
+option channel '44'
+option htmode 'HT40'
+option country 'DE'
+option cell_density '0'
+option txpower '23'
+
+config wifi-iface 'default_radio0'
+option device 'radio0'
+option network 'lan'
+option mode 'ap'
+option ssid '__WIFI_SSID__'
+option encryption 'psk2'
+option key '__WIFI_PASSWORD__'
+option ocv '0'
+option ieee80211r '1'
+option nasid 'Fritz7490-5g'
+option mobility_domain '1234'
+option ft_over_ds '0'
+option ft_psk_generate_local '1'
+option ieee80211k '1'
+option ieee80211v '1'
+option ieee80211w '1'
+option bss_transition '1'
+option rrm_neighbor_report '1'
+option rrm_beacon_report '1'
+option disassoc_low_ack '1'
+option bss_load_update_period '60'
+option chan_util_avg_period '600'
+option wmm '1'
+option multicast_to_unicast '1'
+option wps_pushbutton '1'
+
+config wifi-iface 'mesh0'
+option device 'radio0'
+option network 'lan'
+option mode 'mesh'
+option mesh_id 'mymesh'
+option encryption 'sae'
+option key '__MESH_PASSWORD__'
+option mesh_fwding '1'
+
+config wifi-device 'radio1'
+option type 'mac80211'
+option path 'platform/ahb/18100000.wmac'
+option band '2g'
+option channel '1'
+option htmode 'HT40'
+option country 'DE'
+option cell_density '0'
+option txpower '20'
+
+config wifi-iface 'default_radio1'
+option device 'radio1'
+option network 'lan'
+option mode 'ap'
+option ssid '__WIFI_SSID__'
+option encryption 'psk2'
+option key '__WIFI_PASSWORD__'
+option ocv '0'
+option ieee80211r '1'
+option nasid 'Fritz7490-2g'
+option mobility_domain '1234'
+option ft_over_ds '0'
+option ft_psk_generate_local '1'
+option ieee80211k '1'
+option ieee80211v '1'
+option ieee80211w '1'
+option bss_transition '1'
+option rrm_neighbor_report '1'
+option rrm_beacon_report '1'
+option disassoc_low_ack '1'
+option bss_load_update_period '60'
+option chan_util_avg_period '600'
+option wmm '1'
+option multicast_to_unicast '1'
+option wps_pushbutton '1'
+
+# === END wireless ===
