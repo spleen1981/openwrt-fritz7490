@@ -6,76 +6,131 @@ SAVED="$DIR/saved"
 BACKUP="$DIR/saved.bak"
 TMP="$DIR/.saved.tmp"
 SSH="ssh -o StrictHostKeyChecking=no root@$HOST"
+PACKAGES="dhcp dropbear firewall luci network openssl radius rpcd system uhttpd wireless"
 
 log(){ logger -t wasp-wireless "$*"; echo "$*"; }
-valid(){ [ -s "$1" ] && grep -Eq "^package '?wireless'?[[:space:]]*$" "$1"; }
+
+valid(){
+[ -s "$1" ] || return 1
+for pkg in $PACKAGES; do
+grep -Eq "^# === BEGIN $pkg ===\$" "$1" || return 1
+grep -Eq "^# === END $pkg ===\$" "$1" || return 1
+done
+return 0
+}
+
 reachable(){
-    tries=0
-    while [ $tries -lt 10 ]; do
-        $SSH true >/dev/null 2>&1 && return 0
-        tries=$(($tries+1))
-        sleep 1
-    done
-    return 1
+tries=0
+while [ $tries -lt 10 ]; do
+$SSH true >/dev/null 2>&1 && return 0
+tries=$(($tries+1))
+sleep 1
+done
+return 1
+}
+
+export_config(){
+reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
+$SSH 'for pkg in '"$PACKAGES"'; do
+echo "# === BEGIN $pkg ==="
+uci export "$pkg"
+echo "# === END $pkg ==="
+done'
 }
 
 apply(){
-    file="$1"; name="$2"
-    valid "$file" || { log "ERROR: invalid $name configuration"; return 1; }
-    reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
-    if $SSH 'rm -f /tmp/wasp-wireless.uci; cat > /tmp/wasp-wireless.uci; grep -Eq "^package '\''?wireless'\''?[[:space:]]*$" /tmp/wasp-wireless.uci || exit 1; rm -f /etc/config/wireless; uci import wireless < /tmp/wasp-wireless.uci || exit 1; uci commit wireless || exit 1; wifi reload || exit 1; uci export wireless >/dev/null' < "$file"; then
-        log "Applied $name configuration"
-    else
-        log "ERROR: failed to apply $name configuration"
-        return 1
-    fi
+file="$1"; name="$2"
+valid "$file" || { log "ERROR: invalid $name configuration"; return 1; }
+reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
+if $SSH 'set -e
+rm -f /tmp/wasp-wireless.export
+cat > /tmp/wasp-wireless.export
+for pkg in '"$PACKAGES"'; do
+awk -v pkg="$pkg" "
+\$0 == \"# === BEGIN \" pkg \" ===\" { on=1; next }
+\$0 == \"# === END \" pkg \" ===\"   { on=0 }
+on { print }
+" /tmp/wasp-wireless.export > "/tmp/wasp-wireless.$pkg.uci"
+[ -s "/tmp/wasp-wireless.$pkg.uci" ] || { echo "empty export for $pkg" >&2; exit 1; }
+rm -f "/etc/config/$pkg"
+uci import "$pkg" < "/tmp/wasp-wireless.$pkg.uci"
+uci commit "$pkg"
+rm -f "/tmp/wasp-wireless.$pkg.uci"
+done
+rm -f /tmp/wasp-wireless.export
+reload_config >/dev/null 2>&1 || true
+wifi reload
+' < "$file"; then
+log "Applied $name configuration"
+else
+log "ERROR: failed to apply $name configuration"
+return 1
+fi
 }
 
 save(){
-    mkdir -p "$DIR"; chmod 700 "$DIR"; rm -f "$TMP"
-    reachable || { log "ERROR: WASP SSH unreachable"; return 1; }
-    $SSH 'uci export wireless' > "$TMP" || { rm -f "$TMP"; return 1; }
-    valid "$TMP" || { rm -f "$TMP"; log "ERROR: invalid export"; return 1; }
-    [ ! -f "$SAVED" ] || cp "$SAVED" "$BACKUP" || return 1
-    chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
-    log "Saved current WASP wireless configuration"
+mkdir -p "$DIR"; chmod 700 "$DIR"; rm -f "$TMP"
+if ! export_config > "$TMP"; then
+rm -f "$TMP"
+log "ERROR: export failed"
+return 1
+fi
+valid "$TMP" || { rm -f "$TMP"; log "ERROR: invalid export"; return 1; }
+[ ! -f "$SAVED" ] || cp "$SAVED" "$BACKUP" || return 1
+chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
+log "Saved current WASP configuration"
+}
+
+ensure_factory(){
+valid "$FACTORY" && return 0
+log "No factory snapshot found; capturing current WASP configuration as factory"
+mkdir -p "$DIR"; chmod 700 "$DIR"; rm -f "$TMP"
+if ! export_config > "$TMP"; then
+rm -f "$TMP"
+log "ERROR: could not capture factory snapshot (export failed)"
+return 1
+fi
+valid "$TMP" || { rm -f "$TMP"; log "ERROR: could not capture factory snapshot (invalid export)"; return 1; }
+chmod 600 "$TMP"; mv "$TMP" "$FACTORY"; sync
+log "Factory snapshot captured from current WASP configuration"
 }
 
 boot(){
-    if valid "$SAVED"; then
-        apply "$SAVED" saved && return 0
-        log "Saved configuration failed; using factory"
-    fi
-    apply "$FACTORY" factory
+ensure_factory
+if valid "$SAVED"; then
+apply "$SAVED" saved && return 0
+log "Saved configuration failed; using factory"
+fi
+apply "$FACTORY" factory
 }
 
 factory(){
-    if [ -f "$SAVED" ]; then cp "$SAVED" "$BACKUP" || return 1; rm -f "$SAVED"; sync; fi
-    apply "$FACTORY" factory
+if [ -f "$SAVED" ]; then cp "$SAVED" "$BACKUP" || return 1; rm -f "$SAVED"; sync; fi
+apply "$FACTORY" factory
 }
 
 restore_backup(){
-    valid "$BACKUP" || { log "ERROR: no valid saved.bak"; return 1; }
-    cp "$BACKUP" "$TMP" || return 1; chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
-    apply "$SAVED" backup
+valid "$BACKUP" || { log "ERROR: no valid saved.bak"; return 1; }
+cp "$BACKUP" "$TMP" || return 1; chmod 600 "$TMP"; mv "$TMP" "$SAVED"; sync
+apply "$SAVED" backup
 }
 
 status(){
-    reachable && echo 'WASP SSH: reachable' || echo 'WASP SSH: unreachable'
-    valid "$SAVED" && echo 'Boot configuration: saved' || echo 'Boot configuration: factory'
-    valid "$FACTORY" && echo 'Factory configuration: available' || echo 'Factory configuration: invalid'
-    valid "$BACKUP" && echo 'Previous backup: available' || echo 'Previous backup: unavailable'
-    reachable && { echo; $SSH 'wifi status'; }
+reachable && echo 'WASP SSH: reachable' || echo 'WASP SSH: unreachable'
+valid "$SAVED" && echo 'Boot configuration: saved' || echo 'Boot configuration: factory'
+valid "$FACTORY" && echo 'Factory configuration: available' || echo 'Factory configuration: not yet captured'
+valid "$BACKUP" && echo 'Previous backup: available' || echo 'Previous backup: unavailable'
+reachable && { echo; $SSH 'wifi status'; }
 }
 
 mkdir -p "$DIR"; chmod 700 "$DIR"
 case "${1:-}" in
- save) save ;;
- restore) apply "$SAVED" saved ;;
- factory) factory ;;
- restore-backup) restore_backup ;;
- boot) boot ;;
- status) status ;;
- show) $SSH 'uci export wireless' ;;
- *) echo 'Usage: wasp-wireless {save|restore|factory|restore-backup|boot|status|show}'; exit 1 ;;
+save) save ;;
+restore) apply "$SAVED" saved ;;
+factory) factory ;;
+restore-backup) restore_backup ;;
+boot) boot ;;
+status) status ;;
+show) export_config ;;
+*) echo 'Usage: wasp-wireless {save|restore|factory|restore-backup|boot|status|show}'; exit 1 ;;
 esac
