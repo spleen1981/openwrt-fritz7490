@@ -39,22 +39,11 @@ while true; do
   fi
 done
 
-# Configure persistent WASP base settings
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@192.168.1.2 '
-  uci set system.@system[0].hostname="Fritz7490-WASP"
-  uci set system.@system[0].description="Fritz7490-WASP"
-  uci set network.@device[0].mtu="1424"
-  uci set dhcp.lan.ignore="1"
-  uci -q del dhcp.lan.ra
-  uci -q del dhcp.lan.ra_slaac
-  uci -q del dhcp.lan.ra_flags
-  uci -q del dhcp.lan.dhcpv6
-  uci -q del dhcp.lan.domain
-  uci commit system
-  uci commit network
-  uci commit dhcp
-  reload_config
-'
+# Base WASP settings (hostname, mtu, dhcp.lan.ignore, ra/dhcpv6 cleanup) are
+# no longer set here: they already live in the network/dhcp/system packages
+# embedded in files/etc/wasp-wireless/factory.template, and are unconditionally
+# (re)applied by `wasp-wireless boot` right below, which would overwrite
+# anything set in a separate ssh block here anyway.
 
 # Restore saved wireless configuration, falling back to factory
 /usr/sbin/wasp-wireless boot
